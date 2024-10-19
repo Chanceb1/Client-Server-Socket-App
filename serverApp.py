@@ -3,7 +3,7 @@ Client-Server Application:
     This client server application facilitates instant messaging type chat functionality
     wherein messages sent from a client terminal should be visible on the server terminal 
     and vice versa. The app also supports file shares between the client and server 
-    terminals. 
+    terminals. The server supports threading allowing for multiple client connections.
 
     Server side of the application: enables threading to handle multiple client connections
     and file sharing functionality.
@@ -12,7 +12,9 @@ Client-Server Application:
 import socket           # for socket
 import threading        # for multiple clients
 import os               # for file operations
+import time             # for the sleep function
 
+shutdown_flag = False   # Global flag to control server shutdown
 
 # define fixed host and port
 host = '127.0.0.1'
@@ -20,10 +22,11 @@ port = 3000  # initiate port num above 1024
 
 
 def handleClient (clientSocket, address):
+    global shutdown_flag
 
     print(f"Connection from: {address}\n") # Notify server of a new connection
 
-    while True:
+    while not shutdown_flag:
         try:
             data = clientSocket.recv(1024).decode() # receive data from the client
 
@@ -32,7 +35,10 @@ def handleClient (clientSocket, address):
             
             if data.lower().strip() == 'file':
                 receiveFile(clientSocket)       # call function to receive file
-                continue
+            elif data.lower().strip() == 'bye':  # if client msg is 'bye' then close connection
+                print(f"Client {address} has disconnected.")
+                clientSocket.close()
+                break
             else:
                 print(f"From {str(address)}: {str(data)}")  # Print the client's message
 
@@ -41,9 +47,11 @@ def handleClient (clientSocket, address):
 
             if msg.lower().strip() == 'exit':  # if server user msg is 'exit' then close server   
                 print(f"Closing connection...")
-                clientSocket.send("Server is shutting down.".encode())
+                clientSocket.send(msg.encode())
+                time.sleep(1)
                 clientSocket.close()
-                exit()      
+                shutdown_flag = True   # Set the shutdown flag to true to stop the server
+                break
 
             clientSocket.send(msg.encode())
 
@@ -77,12 +85,12 @@ def receiveFile(clientSocket):
         clientSocket.send("size_received".encode())
     except ValueError:
         print(f"Received invalid file size: {fileSize}")
-        return  # Exit if the file size is invalid
+        return 
         
     print(f"Receiving file: {fileName} ({fileSize} bytes)")
     
-    receivedData = b''  # byte string to store the file data
 
+    receivedData = b''  # byte string to store the file data
     # Receive the file in chunks
     while len(receivedData) < fileSize:
         chunk = clientSocket.recv(1024)
@@ -93,7 +101,6 @@ def receiveFile(clientSocket):
 
     # Extract only the file name to save it in the current directory, or use full path
     savePath = os.path.basename(fileName)  # Save in current directory
-    # Alternative: savePath = fileName (if you want to save it using the full path)
 
     # Write the file to disk
     with open(savePath, 'wb') as f:
@@ -101,16 +108,14 @@ def receiveFile(clientSocket):
     
     print(f"File {savePath} received successfully!")
     
-    # # Close the client socket
-    # clientSocket.close()
-    # return
-
 
 def server_program():
+    global shutdown_flag
+
     try:
         serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # create an INET, STREAMing socket
         serverSocket.bind((host, port))         # bind socket to a public host, and port
-        serverSocket.listen(5)                  # Listen for clients, 5 clients can queue
+        serverSocket.listen(1)                  # Listen for client connection
         print(f"Server started at {host}:{port}\nlistening for connections... ")
 
     except socket.error as err:
@@ -119,21 +124,20 @@ def server_program():
 
     # run forever loop until we interrupt 
     # or an error occurs 
-    while True:
+    while not shutdown_flag:
         try:
             # Establish connection with client. 
             (client, address) = serverSocket.accept()
             # print (f'Connection from: {str(address)}\n')
-            
-            # send a connection message to the client. encoding to send byte type. 
-            # client.send('Thanks for connecting to the server !'.encode())
+            handleClient(client, address)  # Handle the client connection
 
             # Start a new thread to handle the client
-            clientHandler = threading.Thread(target=handleClient, args=(client, address))
-            clientHandler.start()
+            # clientHandler = threading.Thread(target=handleClient, args=(client, address))
+            # clientHandler.start()
 
         except KeyboardInterrupt:
             print("\nServer shutting down...")
+            shutdown_flag = True
             break
 
     serverSocket.close()

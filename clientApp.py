@@ -3,7 +3,7 @@ Client-Server Application:
     This client server application facilitates instant messaging type chat functionality
     wherein messages sent from a client terminal should be visible on the server terminal 
     and vice versa. The app also supports file shares between the client and server 
-    terminals. 
+    terminals. The server supports threading allowing for multiple client connections.
 '''
 
 import socket
@@ -34,7 +34,14 @@ def sendFile(client):
         filePath = input("Enter the file path to send: ").strip()
         if os.path.exists(filePath):
             break
-        print("File does not exist!")
+        # elif filePath.lower() == 'exit':
+        #     print("Exiting file transfer mode...")
+        #     # send messge to server to reset to message mode
+        #     client.send("exited file transfer mode".encode())
+        #     return
+        else:
+            print("File does not exist!")
+
 
     fileName = os.path.basename(filePath)
     fileSize = os.path.getsize(filePath)
@@ -97,6 +104,7 @@ def clientProgram():
 
         if msg.lower().strip() == 'bye':  # exit condition
             print("Disconnecting from the server...")
+            s.send(msg.encode())          # Send 'bye' message to server
             break
         elif msg.lower().strip() == 'file':  # File transfer mode
             sendFile(s)
@@ -106,10 +114,16 @@ def clientProgram():
         try:
             # Receive the response
             data = s.recv(1024).decode()
-            if not data:  # If the server has disconnected
+            # if server sends 'exit' then close the connection
+            if data.lower().strip() == 'exit':
+                print("Server is shutting down.")
+                break
+            elif not data:  # If the server has disconnected
                 print("Server disconnected.")
                 break
-            print(f"Received from server: {str(data)}")
+            else:
+                print(f"Received from server: {str(data)}")
+                
         except socket.error as e:
             print(f"Error receiving data: {e}")
             break
