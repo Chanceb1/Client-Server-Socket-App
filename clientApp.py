@@ -4,6 +4,12 @@ Client-Server Application:
     wherein messages sent from a client terminal should be visible on the server terminal 
     and vice versa. The app also supports file shares between the client and server 
     terminals. The server supports threading allowing for multiple client connections.
+
+    when prompted for input ( -> ) the user can:
+     * type any message to send to the server
+     * type 'file' to enter file transfer mode
+          then enter the file's 'file path' to send file to server
+     * type 'bye' to disconnect from the server and exit application
 '''
 
 import socket
@@ -81,6 +87,52 @@ def sendFile(client):
     print(f"File {fileName} sent successfully!")
     return
 
+
+# Function to receive a file from the client
+def receiveFile(clientSocket):
+    # Send ready signal
+    clientSocket.send("ready".encode())
+    
+    # Receive the file name
+    fileName = clientSocket.recv(1024).decode()  # Receive the file name
+    if not fileName:
+        return
+    
+    # Acknowledge file name received
+    clientSocket.send("name_received".encode())
+
+    # Receive file size
+    fileSizeStr = clientSocket.recv(1024).decode()  # Receive file size
+    try:
+        fileSize = int(fileSizeStr)  # Convert the received size to an integer
+        # Acknowledge file size received
+        clientSocket.send("size_received".encode())
+    except ValueError:
+        print(f"Received invalid file size: {fileSize}")
+        return 
+        
+    print(f"Receiving file: {fileName} ({fileSize} bytes)")
+    
+
+    receivedData = b''  # byte string to store the file data
+    # Receive the file in chunks
+    while len(receivedData) < fileSize:
+        chunk = clientSocket.recv(1024)
+        if not chunk:
+            break
+        receivedData += chunk
+
+
+    # Extract only the file name to save it in the current directory, or use full path
+    savePath = os.path.basename(fileName)  # Save in current directory
+
+    # Write the file to disk
+    with open(savePath, 'wb') as f:
+        f.write(receivedData)
+    
+    print(f"File {savePath} received successfully!")
+
+
 # Main function
 def clientProgram():
     # Create a socket object, configure it to use IPv4 and TCP
@@ -118,6 +170,8 @@ def clientProgram():
             if data.lower().strip() == 'exit':
                 print("Server is shutting down.")
                 break
+            elif data.lower().strip() == 'file': # receive file from server
+                receiveFile(s)
             elif not data:  # If the server has disconnected
                 print("Server disconnected.")
                 break
