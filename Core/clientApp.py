@@ -1,7 +1,7 @@
 '''
 Client-Server Application:
     This client server application facilitates instant messaging type chat functionality
-    wherein messages sent from a client terminal should be visible on the server terminal 
+    wherein messages sent from a client terminal are visible on the server terminal 
     and vice versa. The app also supports file shares between the client and server 
     terminals. The server supports threading allowing for multiple client connections.
 
