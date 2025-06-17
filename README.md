@@ -2,6 +2,12 @@
 
 This is a simple client-server application that enables bidirectional file transfer and text messaging using socket programming. The client can connect to the server to send and receive both files and text messages.
 
+## Screenshots
+
+![GUI Application Screenshot](Interface/public/gui)
+
+*Application GUI interface showcasing the terminal-based client-server communication*
+
 ## Features
 
 - **Bidirectional Communication:** Supports sending and receiving text messages between the client and server.
